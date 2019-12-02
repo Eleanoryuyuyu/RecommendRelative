@@ -9,10 +9,13 @@ from tqdm import trange
 import numpy as np
 from ctrModels.deep_models.wdl_dataset import WideDeepDataset
 from ctrModels.layers.DeepModule import DNN
+from ctrModels.utils.loss import get_loss
+from ctrModels.utils.metrics import get_metric
+from ctrModels.utils.optimizers import get_optimizer
 
 n_cpus = os.cpu_count()
 class WideDeep(nn.Module):
-    def __init__(self, wide_model, deep_model, output_dim=1):
+    def __init__(self, wide_model, deep_model):
         super(WideDeep, self).__init__()
         self.wide = wide_model
         self.deepdense = deep_model
@@ -21,15 +24,15 @@ class WideDeep(nn.Module):
         out = self.wide(X['wide'])
         out.add_(self.deepdense(X['deepdense']))
         return out
-    def compile(self, method, optimizers=None, loss_func=None, metric=None,verbose=1, seed=2019):
+    def compile(self, method, optimizers='adam', loss_func='binary_crossentropy', metric='acc',verbose=1, seed=2019):
         self.verbose = verbose
         self.seed = seed
         self.early_stop = False
         self.method = method
-        self.optimizer = torch.optim.Adam(self.parameters())
-        self.loss_func = F.binary_cross_entropy
+        self.optimizer = get_optimizer(self.parameters(), optim_type=optimizers)
+        self.loss_func = get_loss(loss_func)
 
-        self.metric= lambda y_pred, y_true: self.get_metric(y_pred=y_pred, y_true=y_true)
+        self.metric= lambda y_pred, y_true: get_metric(metric, y_pred=y_pred, y_true=y_true)
 
 
     def fit(self, X_wide=None, X_deep=None, X_train=None, X_val=None, target=None,
@@ -159,11 +162,7 @@ class WideDeep(nn.Module):
         else:
             return None, avg_loss
 
-    def get_metric(self, y_pred, y_true):
-        correct_count = y_pred.round().eq(y_true.view(-1,1)).float().sum().item()
-        total_count = len(y_pred)
-        acc = float(correct_count) / float(total_count)
-        return np.round(acc, 4)
+
 
 
 

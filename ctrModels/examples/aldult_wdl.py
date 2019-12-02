@@ -26,7 +26,7 @@ if __name__ == '__main__':
                     hidden_units=[64, 32], dnn_dropout=0.5)
     model = WideDeep(wide, deepdense)
 
-    model.compile(method='binary')
+    model.compile(method='binary', optimizers='adam', loss_func='binary_crossentropy', metric='acc')
     X_train = {'X_wide': X_train_wide, 'X_deep': X_train_deep, 'target': y_train_wide}
     X_val = {'X_wide': X_test_wide, 'X_deep': X_test_deep, 'target': y_test_wide}
     model.fit(X_train=X_train, X_val=X_val, n_epochs=10, batch_size=256)

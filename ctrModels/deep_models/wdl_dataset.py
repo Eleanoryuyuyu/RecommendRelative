@@ -17,8 +17,9 @@ class WideDeepDataset(Dataset):
         # X_wide and X_deep are assumed to be *always* present
         if isinstance(self.X_wide, sparse_matrix):
             X = Bunch(wide=np.array(self.X_wide[idx].todense()).squeeze())
-        else: X = Bunch(wide=self.X_wide[idx])
-        X.deepdense= self.X_deep[idx]
+        else:
+            X = Bunch(wide=self.X_wide[idx])
+        X.deepdense = self.X_deep[idx]
         if self.Y is not None:
             y = self.Y[idx]
             return X, y
