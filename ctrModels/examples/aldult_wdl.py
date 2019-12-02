@@ -18,13 +18,12 @@ if __name__ == '__main__':
     print(X_train_wide.shape, X_test_wide.shape)
     X_train_deep, y_train_deep, X_test_deep, y_test_deep, deep_col_idx, embed_input = \
         deep_feature_process(embedding_cols, cont_cols, target, df_train, df_test)
-    # print(X_train_deep.shape, X_test_deep.shape)
-    # print(deep_col_idx)
-    # print(embed_input)
-    wide = LinearModule(wide_dim=X_train_wide.shape[1], output_dim=1)
-    deepdense = DNN(deep_col_idx=deep_col_idx, embed_input=embed_input, cont_cols=cont_cols,
-                    hidden_units=[64, 32], dnn_dropout=0.5)
-    model = WideDeep(wide, deepdense)
+
+    wide = LinearModule
+    deepdense = DNN
+    model = WideDeep(wide_dim=X_train_wide.shape[1], output_dim=1, wide_model=wide, deep_col_idx= deep_col_idx,
+                     deep_model=deepdense, hidden_units=[64, 32], dnn_dropout=0.5,
+                     embed_input=embed_input, cont_cols=cont_cols)
 
     model.compile(method='binary', optimizers='adam', loss_func='binary_crossentropy', metric='acc')
     X_train = {'X_wide': X_train_wide, 'X_deep': X_train_deep, 'target': y_train_wide}

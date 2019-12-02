@@ -8,23 +8,39 @@ from torch.utils.data import DataLoader
 from tqdm import trange
 import numpy as np
 from ctrModels.deep_models.wdl_dataset import WideDeepDataset
-from ctrModels.layers.DeepModule import DNN
+from ctrModels.layers.EmbeddingLayer import EmbeddingLayer
 from ctrModels.utils.loss import get_loss
 from ctrModels.utils.metrics import get_metric
 from ctrModels.utils.optimizers import get_optimizer
 
 n_cpus = os.cpu_count()
+
+
 class WideDeep(nn.Module):
-    def __init__(self, wide_model, deep_model):
+    def __init__(self, wide_dim, output_dim, wide_model, deep_col_idx, deep_model, hidden_units=[64, 32],
+                 dnn_dropout=0.5,
+                 embed_layer=EmbeddingLayer, embed_input=None, cont_cols=None, embed_dropout=0):
         super(WideDeep, self).__init__()
-        self.wide = wide_model
-        self.deepdense = deep_model
+        self.wide = wide_model(wide_dim=wide_dim, output_dim=output_dim)
+        if embed_input is not None:
+            embed_input_dim = np.sum([embed[2] for embed in embed_input])
+        else:
+            embed_input_dim = 0
+        if cont_cols is not None:
+            cont_input_dim = len(cont_cols)
+        else:
+            cont_input_dim = 0
+        deep_input_dim = embed_input_dim + cont_input_dim
+        self.deepdense = deep_model(deep_input_dim=deep_input_dim, hidden_units=hidden_units, dnn_dropout=dnn_dropout)
+        self.embed_layer = embed_layer(deep_col_idx=deep_col_idx, embed_input=embed_input, cont_cols=cont_cols,
+                                       embed_dropout=embed_dropout)
 
     def forward(self, X):
         out = self.wide(X['wide'])
-        out.add_(self.deepdense(X['deepdense']))
+        out.add_(self.deepdense(self.embed_layer(X['deepdense'])))
         return out
-    def compile(self, method, optimizers='adam', loss_func='binary_crossentropy', metric='acc',verbose=1, seed=2019):
+
+    def compile(self, method, optimizers='adam', loss_func='binary_crossentropy', metric='acc', verbose=1, seed=2019):
         self.verbose = verbose
         self.seed = seed
         self.early_stop = False
@@ -32,8 +48,7 @@ class WideDeep(nn.Module):
         self.optimizer = get_optimizer(self.parameters(), optim_type=optimizers)
         self.loss_func = get_loss(loss_func)
 
-        self.metric= lambda y_pred, y_true: get_metric(metric, y_pred=y_pred, y_true=y_true)
-
+        self.metric = lambda y_pred, y_true: get_metric(metric, y_pred=y_pred, y_true=y_true)
 
     def fit(self, X_wide=None, X_deep=None, X_train=None, X_val=None, target=None,
             val_split=None, n_epochs=1, batch_size=32, validation_freq=1):
@@ -42,7 +57,7 @@ class WideDeep(nn.Module):
                 "Training data is missing. Either a dictionary (X_train) with "
                 "the training dataset or at least 3 arrays (X_wide, X_deep, "
                 "target) must be passed to the fit method")
-        self.batch_size  = batch_size
+        self.batch_size = batch_size
         train_set, eval_set = self._train_val_split(X_wide, X_deep, X_train, X_val, val_split, target)
         train_loader = DataLoader(dataset=train_set, batch_size=batch_size, num_workers=n_cpus)
         train_steps = len(train_loader)
@@ -50,22 +65,22 @@ class WideDeep(nn.Module):
             print("training")
         for epoch in range(n_epochs):
             self.train_running_loss = 0
-            with trange(train_steps, disable=self.verbose != 1) as t :
+            with trange(train_steps, disable=self.verbose != 1) as t:
                 for batch_idx, (data, target) in zip(t, train_loader):
-                    t.set_description('epoch % i' %(epoch + 1))
+                    t.set_description('epoch % i' % (epoch + 1))
                     acc, train_loss = self._training_step(data, target, batch_idx)
                     if acc is not None:
                         t.set_postfix(metrics=acc, loss=train_loss)
                     else:
                         t.set_postfix(loss=np.sqrt(train_loss))
-            if epoch % validation_freq  == (validation_freq - 1):
+            if epoch % validation_freq == (validation_freq - 1):
                 if eval_set is not None:
                     eval_loader = DataLoader(dataset=eval_set, batch_size=batch_size, num_workers=n_cpus,
-                        shuffle=False)
+                                             shuffle=False)
                     eval_steps = len(eval_loader)
                     self.valid_running_loss = 0.
                     with trange(eval_steps, disable=self.verbose != 1) as v:
-                        for i, (data,target) in zip(v, eval_loader):
+                        for i, (data, target) in zip(v, eval_loader):
                             v.set_description('valid')
                             acc, val_loss = self._validation_step(data, target, i)
                             if acc is not None:
@@ -73,6 +88,7 @@ class WideDeep(nn.Module):
                             else:
                                 v.set_postfix(loss=np.sqrt(val_loss))
         self.train()
+
     def predict(self, X_wide=None, X_deep=None, X_test=None):
         if X_test is not None:
             test_set = WideDeepDataset(**X_test)
@@ -80,7 +96,7 @@ class WideDeep(nn.Module):
             load_dict = {'X_wide': X_wide, 'X_deep': X_deep}
             test_set = WideDeepDataset(**load_dict)
         test_loader = DataLoader(dataset=test_set, batch_size=self.batch_size, num_workers=n_cpus, shuffle=False)
-        test_steps = (len(test_loader)//test_loader.batch_size) + 1
+        test_steps = (len(test_loader) // test_loader.batch_size) + 1
         self.eval()
         pred_re = []
         with torch.no_grad():
@@ -93,10 +109,6 @@ class WideDeep(nn.Module):
         self.train()
         preds = np.vstack(pred_re).squeeze(1)
         return (preds > 0.5).astype('int')
-
-
-
-
 
     def _train_val_split(self, X_wide=None, X_deep=None, X_train=None, X_val=None, val_split=None, target=None):
         if X_val is None and val_split is None:
@@ -136,7 +148,7 @@ class WideDeep(nn.Module):
         self.optimizer.step()
 
         self.train_running_loss += loss.item()
-        avg_loss = self.train_running_loss/(batch_idx+1)
+        avg_loss = self.train_running_loss / (batch_idx + 1)
 
         if self.metric is not None:
             acc = self.metric(y_pred, y)
@@ -161,13 +173,3 @@ class WideDeep(nn.Module):
             return acc, avg_loss
         else:
             return None, avg_loss
-
-
-
-
-
-
-
-
-
-
