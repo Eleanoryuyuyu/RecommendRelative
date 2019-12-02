@@ -70,6 +70,29 @@ class WideDeep(nn.Module):
                             else:
                                 v.set_postfix(loss=np.sqrt(val_loss))
         self.train()
+    def predict(self, X_wide=None, X_deep=None, X_test=None):
+        if X_test is not None:
+            test_set = WideDeepDataset(**X_test)
+        else:
+            load_dict = {'X_wide': X_wide, 'X_deep': X_deep}
+            test_set = WideDeepDataset(**load_dict)
+        test_loader = DataLoader(dataset=test_set, batch_size=self.batch_size, num_workers=n_cpus, shuffle=False)
+        test_steps = (len(test_loader)//test_loader.batch_size) + 1
+        self.eval()
+        pred_re = []
+        with torch.no_grad():
+            with trange(test_steps, disable=self.verbose != 1) as t:
+                for i, data in zip(t, test_loader):
+                    t.set_description("predict")
+                    X = data
+                    y_pred = torch.sigmoid(self.forward(X)).data.numpy()
+                    pred_re.append(y_pred)
+        self.train()
+        preds = np.vstack(pred_re).squeeze(1)
+        return (preds > 0.5).astype('int')
+
+
+
 
 
     def _train_val_split(self, X_wide=None, X_deep=None, X_train=None, X_val=None, val_split=None, target=None):

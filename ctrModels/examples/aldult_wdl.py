@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
+from sklearn.metrics import accuracy_score
 
 from ctrModels.layers.DeepModule import DNN
 from ctrModels.layers.WideModule import LinearModule
@@ -29,5 +30,9 @@ if __name__ == '__main__':
     X_train = {'X_wide': X_train_wide, 'X_deep': X_train_deep, 'target': y_train_wide}
     X_val = {'X_wide': X_test_wide, 'X_deep': X_test_deep, 'target': y_test_wide}
     model.fit(X_train=X_train, X_val=X_val, n_epochs=10, batch_size=256)
+    X_test = {'X_wide': X_test_wide, 'X_deep': X_test_deep}
+    pred_val = model.predict(X_test=X_test)
+    acc = accuracy_score(y_test_wide[:256], pred_val)
+    print(acc)
 
 
