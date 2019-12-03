@@ -17,13 +17,13 @@ n_cpus = os.cpu_count()
 
 
 class WideDeep(nn.Module):
-    def __init__(self, wide_dim, output_dim, wide_model, deep_col_idx, deep_model, hidden_units=[64, 32],
-                 dnn_dropout=0.5,
+    def __init__(self, wide_dim, output_dim, wide_model, deep_col_idx, deep_model, embed_dim=10,
+                 hidden_units=[64, 32], dnn_dropout=0.5,
                  embed_layer=EmbeddingLayer, embed_input=None, cont_cols=None, embed_dropout=0):
         super(WideDeep, self).__init__()
         self.wide = wide_model(wide_dim=wide_dim, output_dim=output_dim)
         if embed_input is not None:
-            embed_input_dim = np.sum([embed[2] for embed in embed_input])
+            embed_input_dim = len(embed_input) * embed_dim
         else:
             embed_input_dim = 0
         if cont_cols is not None:
@@ -31,9 +31,10 @@ class WideDeep(nn.Module):
         else:
             cont_input_dim = 0
         deep_input_dim = embed_input_dim + cont_input_dim
-        self.deepdense = deep_model(deep_input_dim=deep_input_dim, hidden_units=hidden_units, dnn_dropout=dnn_dropout)
-        self.embed_layer = embed_layer(deep_col_idx=deep_col_idx, embed_input=embed_input, cont_cols=cont_cols,
-                                       embed_dropout=embed_dropout)
+        self.deepdense = deep_model(deep_input_dim=deep_input_dim, hidden_units=hidden_units, dnn_dropout=dnn_dropout,
+                                    use_bn=True)
+        self.embed_layer = embed_layer(embed_cols=embed_input, embed_dim=embed_dim, deep_col_idx=deep_col_idx,
+                                       cont_cols=cont_cols, embed_dropout=embed_dropout)
 
     def forward(self, X):
         out = self.wide(X['wide'])

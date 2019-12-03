@@ -22,7 +22,7 @@ if __name__ == '__main__':
     wide = LinearModule
     deepdense = DNN
     model = WideDeep(wide_dim=X_train_wide.shape[1], output_dim=1, wide_model=wide, deep_col_idx= deep_col_idx,
-                     deep_model=deepdense, hidden_units=[64, 32], dnn_dropout=0.5,
+                     deep_model=deepdense, hidden_units=[64, 32], dnn_dropout=0.5, embed_dim=10,
                      embed_input=embed_input, cont_cols=cont_cols)
 
     model.compile(method='binary', optimizers='adam', loss_func='binary_crossentropy', metric='acc')

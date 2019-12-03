@@ -13,18 +13,17 @@ class LinearModule(nn.Module):
         return out
 
 class FM(nn.Module):
-    def __init__(self, n=10, k=5):
+    def __init__(self):
         super(FM, self).__init__()
-        self.n = n
-        self.k = k
-        self.linear = nn.Linear(n, 1)
-        self.V = nn.Parameter(torch.randn(self.n, self.k))
 
     def forward(self, x):
-        linear_part = self.linear(x)
-        intersection_1 = torch.mm(x, self.V)
+        """
+        :param x: float tensor of size (batch_size, field_size, embed_size)
+        :return:
+        """
+        intersection_1 = torch.sum(x, dim=1)
         intersection_1 = torch.pow(intersection_1, 2)
-        intersection_2 = torch.mm(torch.pow(x, 2), torch.pow(self.V, 2))
-        output = linear_part + 0.5 * torch.sum(intersection_1 - intersection_2)
+        intersection_2 = torch.sum(torch.pow(x, 2), dim=1)
+        output = 0.5 * torch.sum(intersection_1 - intersection_2)
         return output
 

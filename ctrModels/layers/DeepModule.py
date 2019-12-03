@@ -2,21 +2,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from ctrModels.layers.EmbeddingLayer import EmbeddingLayer
+
 
 
 class DNN(nn.Module):
-    def __init__(self, deep_input_dim, hidden_units, activation=F.relu,
-                 l2_reg=0, dnn_dropout=0, use_bn=False, init_std=0.0001, seed=2019, device='cpu'):
+    def __init__(self, deep_input_dim, hidden_units, activation=F.relu, l2_reg=0,
+                 dnn_dropout=0, use_bn=False, init_std=0.0001, seed=2019, device='cpu'):
         super(DNN, self).__init__()
         self.activation = activation
         self.dropout = nn.Dropout(dnn_dropout)
-        self.seed = seed
         self.l2_reg = l2_reg
         self.use_bn = use_bn
+        self.seed = seed
+
         if len(hidden_units) == 0:
             raise ValueError("hidden_units is empty!")
         print(deep_input_dim)
+
         # Dense Layer
         hidden_units = [deep_input_dim] + hidden_units
         self.linears = nn.ModuleList(
