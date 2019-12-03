@@ -24,9 +24,9 @@ class DeepFM(nn.Module):
     def __init__(self, embed_cols, embed_dim, deep_col_idx, hidden_units=[64, 32],
                  dnn_dropout=0.5, cont_cols=None, embed_dropout=0):
         super(DeepFM, self).__init__()
-        self.linear = LinearModule(wide_dim=len(embed_cols), output_dim=1)
+        self.linear = LinearModule(wide_dim=len(embed_cols)+len(cont_cols), output_dim=1)
         self.embed_layer = EmbeddingLayer(embed_cols=embed_cols, embed_dim=embed_dim, deep_col_idx=deep_col_idx,
-                                          embed_dropout=embed_dropout)
+                                          cont_cols=cont_cols ,embed_dropout=embed_dropout)
         self.fm = FM()
         if embed_cols is not None:
             embed_input_dim = len(embed_cols) * embed_dim
@@ -45,10 +45,11 @@ class DeepFM(nn.Module):
         :param X:  long tensor of size(batch_size, num_filed)
         :return:
         """
-        embed_input = self.embed_layer(X)
+        x_embed, x_cont = self.embed_layer(X)
+        deep_input = torch.cat([x_embed, x_cont], 1)
         linear_part = self.linear(X)
-        fm_part = self.fm(embed_input)
-        deep_part = self.deepdense(embed_input.view(-1, self.deep_input_dim))
+        fm_part = self.fm(x_embed)
+        deep_part = self.deepdense(deep_input.view(-1, self.deep_input_dim))
         out = linear_part + fm_part + deep_part
         return torch.sigmoid(out)
 

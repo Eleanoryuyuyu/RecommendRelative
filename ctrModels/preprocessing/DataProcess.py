@@ -124,23 +124,7 @@ def deep_feature_process(embedding_cols, cont_cols, target, df_train,df_test):
     y_test_deep = np.array(test[target].values).reshape(-1, 1)
     deep_col_idx = {k: idx for idx, k in enumerate(deep_cols)}
     return X_train_deep, y_train_deep, X_test_deep, y_test_deep, deep_col_idx, embed_input
-def deepfm_feature_process(embedding_cols, target, df_train,df_test):
-    df_train['IS_TRAIN'] = 1
-    df_test['IS_TRAIN'] = 0
-    df_deep = pd.concat([df_train, df_test], ignore_index=True)
-    df_deep = df_deep[embedding_cols + [target, 'IS_TRAIN']]
-    df_deep, unique_vals = val2idx(df_deep, embedding_cols)
-    train = df_deep[df_deep.IS_TRAIN == 1].drop('IS_TRAIN', axis=1)
-    test = df_deep[df_deep.IS_TRAIN == 0].drop('IS_TRAIN', axis=1)
-    embed_input = []
-    for k, v in unique_vals.items():
-        embed_input.append((k, len(v)))
-    X_train = train[embedding_cols].values
-    y_train = np.array(train[target].values).reshape(-1, 1)
-    X_test = test[embedding_cols].values
-    y_test = np.array(test[target].values).reshape(-1, 1)
-    deep_col_idx = {k: idx for idx, k in enumerate(embedding_cols)}
-    return X_train, y_train, X_test, y_test, deep_col_idx, embed_input
+
 
 
 

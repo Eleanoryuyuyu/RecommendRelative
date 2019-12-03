@@ -37,8 +37,10 @@ class WideDeep(nn.Module):
                                        cont_cols=cont_cols, embed_dropout=embed_dropout)
 
     def forward(self, X):
+        x_embed, x_cont = self.embed_layer(X['deepdense'])
+        deep_input = torch.cat([x_embed, x_cont], 1)
         out = self.wide(X['wide'])
-        out.add_(self.deepdense(self.embed_layer(X['deepdense'])))
+        out.add_(self.deepdense(deep_input))
         return out
 
     def compile(self, method, optimizers='adam', loss_func='binary_crossentropy', metric='acc', verbose=1, seed=2019):
